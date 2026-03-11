@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Order
 from .serializers import OrderSerializer
+from django.db.models import Count, Sum
 
 # Create your views here.
 
@@ -45,4 +46,32 @@ def order_detail(request, pk):
     elif request.method == 'DELETE':
         order.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def order_analytics(request):
+    # Returns an analytics summary of store operations for management.
+
+    # 1. Total orders in the system.
+    total_orders = Order.objects.count()
+
+    # 2. Breakdown by order status.
+    status_counts = Order.objects.values('order_status').annotate(count=Count('order_status'))
+    # Data formatting.
+    status_breakdown = {item['order_status']: item['count'] for item in status_counts}
+
+    # 3. Total items sitting in the store.
+    items_in_store = Order.objects.filter(
+        order_status__in=['Pending', 'Ready for Collection']
+    ).aggregate(total_items=Sum('total_items'))['total_items'] or 0
+
+    # Final custom JSON response.
+    analytics_data = {
+        "metrics": {
+            "total_orders_tracked": total_orders,
+            "physical_items_in_stockroom": items_in_store
+        },
+        "status_breakdown": status_breakdown
+    }
+
+    return Response(analytics_data)
     
