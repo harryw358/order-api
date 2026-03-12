@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Management Dashboard</title>
+    <link rel="stylesheet" href="{% static 'orders/styles.css' %}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <h2 class="logo">Logi<span>Block</span></h2>
+            <ul>
+                <li onclick="loadAnalytics()" class="active">Dashboard</li>
+                <li onclick="loadOrders()">All Orders</li>
+                <li onclick="showCreateOrder()">New Order</li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <header>
+                <h1 id="page-title">Analytics Summary</h1>
+                <div class="search-bar">
+                    <input type="text" id="customerSearch" placeholder="Search Customer ID...">
+                    <button onclick="searchCustomer()">Search</button>
+                </div>
+            </header>
+
+            <div id="main-grid" class="block-grid">
+                <div class="block stat-block">
+                    <h3>Total Orders</h3>
+                    <p id="total-orders-count">--</p>
+                </div>
+                <div class="block stat-block">
+                    <h3>Items in Stockroom</h3>
+                    <p id="items-in-stock">--</p>
+                </div>
+                <div class="block table-block full-width">
+                    <h3>Status Breakdown</h3>
+                    <div id="status-list" class="status-flex"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'orders/script.js' %}"></script>
+</body>
+</html>

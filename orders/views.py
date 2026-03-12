@@ -120,4 +120,7 @@ def orders_by_date(request, date_str):
     orders = Order.objects.filter(invoice_date__date=target_data)
     serializer = OrderSerializer(orders, many=True)
     return Response(serializer.data)
+
+def dashboard(request):
+    return render(request, 'orders/index.html')
     
