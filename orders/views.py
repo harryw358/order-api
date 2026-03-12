@@ -5,6 +5,7 @@ from rest_framework import status
 from .models import Order
 from .serializers import OrderSerializer
 from django.db.models import Count, Sum
+from datetime import datetime
 
 # Create your views here.
 
@@ -74,4 +75,49 @@ def order_analytics(request):
     }
 
     return Response(analytics_data)
+
+@api_view(['GET'])
+def customer_orders(request, customer_id):
+    # Returns all orders associated with a specific Customer ID.
+
+    orders = Order.objects.filter(customer_id=customer_id)
+
+    # Return error code 404 if the customer has no orders.
+    if not orders.exists():
+        return Response({'message': 'No orders found for this customer.'}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = OrderSerializer(orders, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def large_orders(request):
+    # Returns orders that contain a large number of items, based on threshold set via URL query (?threshold=X).
+
+    # Grab the threshold from the URL, default to 20.
+    threshold = request.GET.get('threshold', 20)
+
+    try:
+        threshold = int(threshold)
+    except ValueError:
+        return Response({'error': 'Threshold must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Filter for orders where total_items is greater than or equal to the threshold.
+    orders = Order.objects.filter(total_items__gte=threshold)
+    serializer = OrderSerializer(orders, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def orders_by_date(request, date_str):
+    # Returns all orders palced on a specific date (Format: YYYY-MM-DD).
+
+    try:
+        # Validate that the user provided a correctly formatted date string.
+        target_data = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return Response({'error': 'Invalid date format. Please use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Django's __date lookup extracts just the date part from the DateTimeField.
+    orders = Order.objects.filter(invoice_date__date=target_data)
+    serializer = OrderSerializer(orders, many=True)
+    return Response(serializer.data)
     
