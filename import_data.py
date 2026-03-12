@@ -39,7 +39,7 @@ def import_data():
                 'order_status': 'Pending' 
             }
         )
-    print("Import complete! No more timezone warnings.")
+    print("Import complete!")
 
 if __name__ == '__main__':
     import_data()
