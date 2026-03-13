@@ -109,18 +109,22 @@ def customer_orders(request, customer_id):
 
 @api_view(['GET'])
 def large_orders(request):
-    # Returns orders that contain a large number of items, based on threshold set via URL query (?threshold=X).
-
-    # Grab the threshold from the URL, default to 20.
+    """
+    Returns orders that have a high number of items. 
+    Defaults to 20+, but allows a custom threshold via URL query (?threshold=X).
+    """
     threshold = request.GET.get('threshold', 20)
-
+    
     try:
         threshold = int(threshold)
     except ValueError:
-        return Response({'error': 'Threshold must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Threshold must be a valid number.'}, status=400)
+
+    # FIX: Dynamically calculate the sum of the nested items' quantities, THEN filter!
+    orders = Order.objects.annotate(
+        calculated_total=Sum('items__quantity')
+    ).filter(calculated_total__gte=threshold)
     
-    # Filter for orders where total_items is greater than or equal to the threshold.
-    orders = Order.objects.filter(total_items__gte=threshold)
     serializer = OrderSerializer(orders, many=True)
     return Response(serializer.data)
 

@@ -1,48 +1,454 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Management Dashboard</title>
-    <link rel="stylesheet" href="{% static 'orders/styles.css' %}">
+    <title>Retail | Order Management Dashboard</title>
+    <style>
+        /* --- CORE STYLES --- */
+        :root {
+            --bg-color: #f0f2f5;
+            --sidebar-color: #1a1a2e;
+            --accent-color: #4361ee;
+            --block-bg: #ffffff;
+            --text-main: #333;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        .dashboard-container { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar { width: 250px; background-color: var(--sidebar-color); color: white; padding: 2rem; }
+        .logo span { color: var(--accent-color); }
+        .sidebar ul { list-style: none; padding: 0; margin-top: 3rem; }
+        .sidebar li { padding: 1rem; margin-bottom: 0.5rem; cursor: pointer; border-radius: 8px; transition: 0.3s; }
+        .sidebar li:hover, .sidebar li.active { background: var(--accent-color); }
+
+        /* Content Area */
+        .content { flex-grow: 1; padding: 2rem; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+
+        /* Block Grid Design */
+        .block-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .block { background: var(--block-bg); padding: 1.5rem; border-radius: 16px; box-shadow: var(--shadow); }
+        .stat-block h3 { font-size: 0.9rem; color: #666; }
+        .stat-block p { font-size: 2.5rem; font-weight: bold; margin: 0.5rem 0; }
+        .full-width { grid-column: 1 / -1; }
+
+        .status-flex { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+        .status-chip { background: #eef2ff; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; color: var(--accent-color); }
+
+        /* Table Styling */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 1rem; border-bottom: 2px solid var(--bg-color); }
+        td { padding: 1rem; border-bottom: 1px solid var(--bg-color); }
+
+        /* --- TOGGLES, MODALS, FORMS, FILTERS --- */
+        .view-section { display: none; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-content { 
+            background: #fff; margin: 5% auto; padding: 2rem; width: 80%; max-width: 800px; 
+            border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            max-height: 85vh; overflow-y: auto; 
+        }
+        .close-btn { float: right; cursor: pointer; font-size: 1.5rem; font-weight: bold; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 0.5rem; }
+        .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .submit-btn { background: var(--accent-color); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; margin-top: 10px; }
+        .submit-btn:hover { opacity: 0.9; }
+        
+        .advanced-filters {
+            display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+            background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: var(--shadow);
+        }
+        .advanced-filters input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .advanced-filters button { background: var(--sidebar-color); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        .advanced-filters button:hover { background: var(--accent-color); }
+        .reset-btn { background: #e74c3c !important; }
+        .divider { color: #ccc; }
+    </style>
 </head>
 <body>
     <div class="dashboard-container">
         <nav class="sidebar">
-            <h2 class="logo">Logi<span>Block</span></h2>
+            <h2 class="logo">Retail<span>Ops</span></h2>
             <ul>
-                <li onclick="loadAnalytics()" class="active">Dashboard</li>
-                <li onclick="loadOrders()">All Orders</li>
-                <li onclick="showCreateOrder()">New Order</li>
+                <li onclick="loadAnalytics()">📊 Dashboard</li>
+                <li onclick="loadOrders()">📦 All Orders</li>
+                <li onclick="showCreateOrder()">➕ Receive Parcel</li>
             </ul>
         </nav>
 
         <main class="content">
-            <header>
+            <header style="margin-bottom: 10px;">
                 <h1 id="page-title">Analytics Summary</h1>
-                <div class="search-bar">
-                    <input type="text" id="customerSearch" placeholder="Search Customer ID...">
-                    <button onclick="searchCustomer()">Search</button>
-                </div>
             </header>
 
-            <div id="main-grid" class="block-grid">
-                <div class="block stat-block">
-                    <h3>Total Orders</h3>
-                    <p id="total-orders-count">--</p>
+            <div id="filter-bar" class="advanced-filters" style="display: none;">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div>
+                        <input type="text" id="customerSearch" placeholder="Customer ID...">
+                        <button onclick="searchCustomer()">Find Customer</button>
+                    </div>
+                    <div>
+                        <input type="text" id="invoiceSearch" placeholder="Invoice No...">
+                        <button onclick="searchInvoice()">Find Invoice</button>
+                    </div>
                 </div>
-                <div class="block stat-block">
-                    <h3>Items in Stockroom</h3>
-                    <p id="items-in-stock">--</p>
+                
+                <span class="divider" style="height: 60px; border-left: 2px solid #eee; margin: 0 15px;"></span>
+                
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="date" id="dateSearch">
+                    <button onclick="searchByDate()">Filter by Date</button>
+                    
+                    <span class="divider">|</span>
+                    
+                    <input type="number" id="thresholdSearch" placeholder="Min Items" style="width: 120px;">
+                    <button onclick="searchLargeOrders()">Find Priority</button>
                 </div>
-                <div class="block table-block full-width">
-                    <h3>Status Breakdown</h3>
-                    <div id="status-list" class="status-flex"></div>
+
+                <button onclick="loadOrders()" class="reset-btn" style="margin-left: auto;">Reset Filters</button>
+            </div>
+
+            <div id="dashboard-view" class="view-section" style="display: block;">
+                <div id="main-grid" class="block-grid">
+                    <div class="block stat-block">
+                        <h3>Total Orders</h3>
+                        <p id="total-orders-count">--</p>
+                    </div>
+                    <div class="block stat-block">
+                        <h3>Total Revenue</h3>
+                        <p id="total-revenue">£0.00</p>
+                    </div>
+                    <div class="block stat-block">
+                        <h3>Items in Stockroom</h3>
+                        <p id="items-in-stock">--</p>
+                    </div>
+                    
+                    <div class="block table-block full-width">
+                        <h3>Order Status Breakdown</h3>
+                        <div id="status-list" class="status-flex"></div>
+                    </div>
+
+                    <div class="block table-block full-width">
+                        <h3>Top 5 Best-Selling Products</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Stock Code</th>
+                                    <th>Description</th>
+                                    <th>Units Sold</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top-products-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+            <div id="orders-view" class="view-section">
+                <div class="block full-width">
+                    <p style="color: #666; font-size: 0.9rem; margin-top: 0;"><em>Click any order row to view items, update status, or process refunds.</em></p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Invoice No.</th>
+                                <th>Customer ID</th>
+                                <th>Status</th>
+                                <th>Total Items</th>
+                                <th>Total Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="create-order-view" class="view-section">
+                <div class="block" style="max-width: 600px;">
+                    <form id="create-order-form" onsubmit="submitNewOrder(event)">
+                        <div class="form-group">
+                            <label>Invoice Number</label>
+                            <input type="text" id="new_invoice_no" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Customer ID</label>
+                            <input type="text" id="new_customer_id" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Country</label>
+                            <input type="text" id="new_country" value="United Kingdom" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Initial Status</label>
+                            <select id="new_order_status">
+                                <option value="Pending">Pending</option>
+                                <option value="Ready for Collection">Ready for Collection</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="submit-btn">Save Order</button>
+                    </form>
+                </div>
+            </div>
+
         </main>
     </div>
-    <script src="{% static 'orders/script.js' %}"></script>
+
+    <div id="order-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title">Order Details</h2>
+            
+            <div id="modal-actions" style="margin-bottom: 20px; text-align: right;"></div>
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 1rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stock Code</th>
+                        <th>Description</th>
+                        <th>Qty</th>
+                        <th>Unit Price</th>
+                        <th>Line Total</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-items-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://127.0.0.1:8000/api';
+
+        function showSection(sectionId, title) {
+            document.querySelectorAll('.view-section').forEach(sec => sec.style.display = 'none');
+            document.getElementById(sectionId).style.display = 'block';
+            document.getElementById('page-title').innerText = title;
+            document.getElementById('filter-bar').style.display = (sectionId === 'orders-view') ? 'flex' : 'none';
+        }
+
+        async function loadAnalytics() {
+            showSection('dashboard-view', 'Analytics Summary');
+            try {
+                const sumRes = await fetch(`${BASE_URL}/orders/analytics/summary/`);
+                const summary = await sumRes.json();
+                
+                document.getElementById('total-orders-count').innerText = summary.metrics.total_orders_tracked;
+                document.getElementById('items-in-stock').innerText = summary.metrics.physical_items_in_stockroom;
+                
+                const statusList = document.getElementById('status-list');
+                statusList.innerHTML = '';
+                for (const [status, count] of Object.entries(summary.status_breakdown)) {
+                    statusList.innerHTML += `<div class="status-chip">${status}: ${count}</div>`;
+                }
+
+                const advRes = await fetch(`${BASE_URL}/orders/analytics/advanced/`);
+                const advData = await advRes.json();
+                
+                const parsedRevenue = parseFloat(advData.total_revenue) || 0;
+                document.getElementById('total-revenue').innerText = `£${parsedRevenue.toFixed(2)}`;
+                
+                const topProductsTbody = document.getElementById('top-products-tbody');
+                topProductsTbody.innerHTML = advData.top_5_products.map(p => `
+                    <tr>
+                        <td>${p.stock_code}</td>
+                        <td>${p.description}</td>
+                        <td>${p.total_sold}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Failed to load analytics", err);
+            }
+        }
+
+        async function fetchOrders(url) {
+            const tbody = document.getElementById('orders-tbody');
+            tbody.innerHTML = `<tr><td colspan="5">Loading...</td></tr>`;
+            try {
+                const response = await fetch(url);
+                if (response.status === 404 || response.status === 400) {
+                    tbody.innerHTML = `<tr><td colspan="5">No orders found for this filter.</td></tr>`;
+                    return;
+                }
+                const data = await response.json();
+                const orders = Array.isArray(data) ? data : [data];
+                
+                if(orders.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5">No orders found.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = orders.map(o => `
+                    <tr onclick="viewOrderDetails('${o.invoice_no}')" style="cursor: pointer;" title="Click to view items">
+                        <td>${o.invoice_no}</td>
+                        <td>${o.customer_id}</td>
+                        <td><span class="status-chip">${o.order_status}</span></td>
+                        <td>${o.total_items_count}</td>
+                        <td>£${(parseFloat(o.total_value) || 0).toFixed(2)}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5">Error loading data.</td></tr>`;
+            }
+        }
+
+        function loadOrders() {
+            showSection('orders-view', 'All Orders');
+            fetchOrders(`${BASE_URL}/orders/`);
+            document.getElementById('customerSearch').value = '';
+            document.getElementById('invoiceSearch').value = '';
+            document.getElementById('dateSearch').value = '';
+            document.getElementById('thresholdSearch').value = '';
+        }
+
+        function searchCustomer() {
+            const cid = document.getElementById('customerSearch').value;
+            if (!cid) return loadOrders();
+            showSection('orders-view', `Orders for Customer: ${cid}`);
+            fetchOrders(`${BASE_URL}/customers/${cid}/orders/`);
+        }
+
+        function searchInvoice() {
+            const invoiceNo = document.getElementById('invoiceSearch').value;
+            if (!invoiceNo) return loadOrders();
+            showSection('orders-view', `Invoice Lookup: ${invoiceNo}`);
+            fetchOrders(`${BASE_URL}/orders/${invoiceNo}/`);
+        }       
+
+        function searchByDate() {
+            const dateVal = document.getElementById('dateSearch').value;
+            if(!dateVal) return;
+            showSection('orders-view', `Arrivals on: ${dateVal}`);
+            fetchOrders(`${BASE_URL}/orders/date/${dateVal}/`);
+        }
+
+        function searchLargeOrders() {
+            const threshold = document.getElementById('thresholdSearch').value || 20;
+            showSection('orders-view', `Priority Orders (${threshold}+ items)`);
+            fetchOrders(`${BASE_URL}/orders/large/?threshold=${threshold}`);
+        }
+
+        async function viewOrderDetails(invoiceNo) {
+            try {
+                const res = await fetch(`${BASE_URL}/orders/${invoiceNo}/`);
+                const order = await res.json();
+                
+                document.getElementById('modal-title').innerText = `Invoice: ${order.invoice_no} (${order.country}) - ${order.order_status}`;
+                
+                const actionsDiv = document.getElementById('modal-actions');
+                actionsDiv.innerHTML = `
+                    <button class="submit-btn" style="background: #27ae60; margin-right: 10px;" onclick="updateOrderStatus('${order.invoice_no}', 'Collected')">✔ Mark as Collected</button>
+                    <button class="submit-btn" style="background: #e74c3c;" onclick="deleteOrder('${order.invoice_no}')">🗑 Refund & Delete</button>
+                `;
+
+                const itemsTbody = document.getElementById('modal-items-tbody');
+                if (order.items && order.items.length > 0) {
+                    itemsTbody.innerHTML = order.items.map(i => `
+                        <tr>
+                            <td>${i.stock_code}</td>
+                            <td>${i.description}</td>
+                            <td>${i.quantity}</td>
+                            <td>£${i.price}</td>
+                            <td>£${parseFloat(i.line_total).toFixed(2)}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    itemsTbody.innerHTML = `<tr><td colspan="5">No nested items found.</td></tr>`;
+                }
+
+                document.getElementById('order-modal').style.display = 'block';
+            } catch (err) {
+                console.error("Error fetching order details", err);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('order-modal').style.display = 'none';
+        }
+
+        async function updateOrderStatus(invoiceNo, newStatus) {
+            try {
+                const response = await fetch(`${BASE_URL}/orders/${invoiceNo}/`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_status: newStatus })
+                });
+                
+                if (response.ok) {
+                    alert(`Order ${invoiceNo} marked as ${newStatus}!`);
+                    closeModal();
+                    loadOrders(); 
+                } else {
+                    alert("Failed to update order status.");
+                }
+            } catch (err) {
+                console.error("Failed to update", err);
+            }
+        }
+
+        async function deleteOrder(invoiceNo) {
+            if (!confirm(`Are you sure you want to completely refund and delete Order ${invoiceNo}? This cannot be undone.`)) {
+                return;
+            }
+            try {
+                const response = await fetch(`${BASE_URL}/orders/${invoiceNo}/`, {
+                    method: 'DELETE'
+                });
+                if (response.ok || response.status === 204) {
+                    alert(`Order ${invoiceNo} successfully deleted and revenue refunded.`);
+                    closeModal();
+                    loadOrders(); 
+                } else {
+                    alert("Failed to delete order.");
+                }
+            } catch (err) {
+                console.error("Failed to delete", err);
+            }
+        }
+
+        function showCreateOrder() {
+            showSection('create-order-view', 'Receive New Parcel');
+        }
+
+        async function submitNewOrder(event) {
+            event.preventDefault();
+            const payload = {
+                invoice_no: document.getElementById('new_invoice_no').value,
+                customer_id: document.getElementById('new_customer_id').value,
+                invoice_date: new Date().toISOString(),
+                country: document.getElementById('new_country').value,
+                order_status: document.getElementById('new_order_status').value
+            };
+            try {
+                const response = await fetch(`${BASE_URL}/orders/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    alert("Order created successfully!");
+                    document.getElementById('create-order-form').reset();
+                    loadOrders();
+                } else {
+                    alert("Failed to create order. Check console for details.");
+                }
+            } catch (err) {
+                console.error("Failed to POST order", err);
+            }
+        }
+
+        window.onload = loadAnalytics;
+    </script>
 </body>
 </html>
