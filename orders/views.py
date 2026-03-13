@@ -8,10 +8,85 @@ from .models import Order, OrderItem
 from .serializers import OrderSerializer
 from django.db.models import Count, Sum, F
 from datetime import datetime
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
+from drf_spectacular.types import OpenApiTypes
 
 # Create your views here.
 
 # Handles Create (POST) and Read All (GET)
+@extend_schema(
+    methods=['GET'],
+    summary="List all Orders",
+    description="Retrieve a list of all orders in the system.",
+    responses={200: OrderSerializer(many=True)}
+)
+@extend_schema(
+    methods=['POST'],
+    summary="Create a New Order",
+    description="Create a new order along with its nested line items.",
+    examples=[
+        OpenApiExample(
+            "New Order Request Example",
+            value={
+                "invoice_no": "536367",
+                "customer_id": "12345",
+                "invoice_date": "2026-03-13T14:30:00Z",
+                "country": "United Kingdom",
+                "items": [
+                    {
+                        "stock_code": "84879",
+                        "description": "ASSORTED COLOUR BIRD ORNAMENT",
+                        "quantity": 8,
+                        "price": "1.69"
+                    }
+                ]
+            },
+            request_only=True # This tells Swagger this is what the user *sends*
+        )
+    ],
+    responses={
+        201: OpenApiResponse(
+            response=OrderSerializer,
+            description="Order successfully created.",
+            examples=[
+                OpenApiExample(
+                    "Created Order Response",
+                    value={
+                        "invoice_no": "536367",
+                        "customer_id": "12345",
+                        "invoice_date": "2026-03-13T14:30:00Z",
+                        "country": "United Kingdom",
+                        "order_status": "Pending",
+                        "total_value": 13.52,
+                        "total_items_count": 8,
+                        "items": [
+                            {
+                                "stock_code": "84879",
+                                "description": "ASSORTED COLOUR BIRD ORNAMENT",
+                                "quantity": 8,
+                                "price": "1.69",
+                                "line_total": 13.52
+                            }
+                        ]
+                    }
+                )
+            ]
+        ),
+        400: OpenApiResponse(
+            description="Validation Error",
+            response={
+                "type": "object",
+                "properties": {
+                    "invoice_no": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "example": ["Order with this invoice no already exists."]
+                    }
+                }
+            }
+        )
+    }
+)
 @api_view(['GET', 'POST'])
 def order_list(request):
     if request.method == 'GET':
@@ -26,7 +101,82 @@ def order_list(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# Handles Read One (GET), Update (PATCH), and Delete (DELETE)
+@extend_schema(
+    methods=['GET'],
+    summary="Get Order Details",
+    description="Fetch a specific order by its unique invoice number, including all nested line items.",
+    responses={
+        200: OpenApiResponse(
+            response=OrderSerializer,
+            description="Successful retrieval of the order.",
+            examples=[
+                OpenApiExample(
+                    "Example Order Response",
+                    value={
+                        "invoice_no": "536365",
+                        "customer_id": "17850",
+                        "invoice_date": "2026-03-13T12:00:00Z",
+                        "country": "United Kingdom",
+                        "order_status": "Pending",
+                        "total_value": 150.25,
+                        "total_items_count": 5,
+                        "items": [
+                            {
+                                "stock_code": "85123A",
+                                "description": "WHITE HANGING HEART",
+                                "quantity": 5,
+                                "price": "30.05",
+                                "line_total": 150.25
+                            }
+                        ]
+                    }
+                )
+            ]
+        ),
+        404: OpenApiResponse(
+            description="Order not found.",
+            response={"type": "object", "properties": {"error": {"type": "string", "example": "Order not found"}}}
+        )
+    }
+)
+@extend_schema(
+    methods=['PATCH'],
+    summary="Update Order",
+    description="Partially update an order. You only need to send the fields you want to change (e.g., updating the `order_status` to 'Shipped').",
+    examples=[
+        OpenApiExample(
+            "Change Status Request Example",
+            value={"order_status": "Shipped"},
+            request_only=True
+        )
+    ],
+    responses={
+        200: OpenApiResponse(
+            response=OrderSerializer,
+            description="The order was successfully updated."
+        ),
+        400: OpenApiResponse(
+            description="Bad Request (e.g., invalid data types).",
+            response={"type": "object", "properties": {"order_status": {"type": "array", "items": {"type": "string"}, "example": ["Invalid status."]}}}
+        ),
+        404: OpenApiResponse(
+            description="Order not found.",
+            response={"type": "object", "properties": {"error": {"type": "string", "example": "Order not found"}}}
+        )
+    }
+)
+@extend_schema(
+    methods=['DELETE'],
+    summary="Delete Order",
+    description="Permanently delete an order. This will also delete all associated items from the database.",
+    responses={
+        204: OpenApiResponse(description="Successfully deleted (No content returned)."),
+        404: OpenApiResponse(
+            description="Order not found.",
+            response={"type": "object", "properties": {"error": {"type": "string", "example": "Order not found"}}}
+        )
+    }
+)
 @api_view(['GET', 'PATCH', 'DELETE'])
 def order_detail(request, pk):
     try:
@@ -50,6 +200,24 @@ def order_detail(request, pk):
         order.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+@extend_schema(
+    summary="Basic Order Analytics",
+    description="Returns total tracked orders, items in the stockroom, and a breakdown of orders by status.",
+    responses={
+        200: OpenApiResponse(
+            response=OpenApiTypes.OBJECT,
+            examples=[
+                OpenApiExample(
+                    'Basic Metrics', 
+                    value={
+                        "metrics": {"total_orders_tracked": 120, "physical_items_in_stockroom": 450},
+                        "status_breakdown": {"Pending": 15, "Collected": 105}
+                    }
+                )
+            ]
+        )
+    }
+)
 @api_view(['GET'])
 def order_analytics(request):
     """Updated basic analytics for the new schema."""
@@ -70,6 +238,26 @@ def order_analytics(request):
         "status_breakdown": status_breakdown
     })
 
+@extend_schema(
+    summary="Advanced Sales Analytics",
+    description="Calculates total revenue, identifies top 5 selling products, and provides country-wise distribution.",
+    responses={
+        200: OpenApiResponse(
+            response=OpenApiTypes.OBJECT,
+            description="Analytics Success",
+            examples=[
+                OpenApiExample(
+                    'Analytics Example',
+                    value={
+                        "total_revenue": 15420.50,
+                        "top_5_products": [{"stock_code": "85123A", "description": "WHITE HANGING HEART", "total_sold": 500}],
+                        "country_distribution": [{"country": "United Kingdom", "order_count": 150}]
+                    }
+                )
+            ]
+        )
+    }
+)
 @api_view(['GET'])
 def advanced_analytics(request):
     """
@@ -96,6 +284,25 @@ def advanced_analytics(request):
         "country_distribution": list(country_breakdown)
     })
 
+@extend_schema(
+    summary="Orders by Customer",
+    description="Retrieve a list of all orders placed by a specific Customer ID.",
+    responses={
+        200: OrderSerializer(many=True),
+        404: OpenApiResponse(
+            description="Customer not found or has no orders.",
+            response={
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string", 
+                        "example": "No orders found for this customer."
+                    }
+                }
+            }
+        )
+    }
+)
 @api_view(['GET'])
 def customer_orders(request, customer_id):
     # Returns all orders associated with a specific Customer ID.
@@ -109,6 +316,14 @@ def customer_orders(request, customer_id):
     serializer = OrderSerializer(orders, many=True)
     return Response(serializer.data)
 
+@extend_schema(
+    summary="Filter Large Orders",
+    parameters=[
+        OpenApiParameter(name='threshold', description='Minimum quantity of items to filter by', required=False, type=int)
+    ],
+    description="Returns orders where the sum of all item quantities meets or exceeds the threshold.",
+    responses={200: OrderSerializer(many=True)}
+)
 @api_view(['GET'])
 def large_orders(request):
     """
@@ -130,6 +345,28 @@ def large_orders(request):
     serializer = OrderSerializer(orders, many=True)
     return Response(serializer.data)
 
+@extend_schema(
+    summary="Filter Orders by Date",
+    description="Retrieve all orders placed on a specific date.",
+    parameters=[
+        OpenApiParameter(name='date_str', location=OpenApiParameter.PATH, description='Format: YYYY-MM-DD', type=str)
+    ],
+    responses={
+        200: OrderSerializer(many=True),
+        400: OpenApiResponse(
+            description="Invalid date format.",
+            response={
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string", 
+                        "example": "Invalid date format. Please use YYYY-MM-DD."
+                    }
+                }
+            }
+        )
+    }
+)
 @api_view(['GET'])
 def orders_by_date(request, date_str):
     # Returns all orders palced on a specific date (Format: YYYY-MM-DD).

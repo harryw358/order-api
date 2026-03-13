@@ -75,8 +75,6 @@ source venv/bin/activate
 
 ---
 
----
-
 ## 3. Import online orders
 
 ```
@@ -113,16 +111,16 @@ http://127.0.0.1:8000/
 
 ## 1. Get All Orders
 
+Returns a list of all orders in the database including their associated items.
+
 ```
 GET /api/orders/
 ```
-
-Returns a list of all orders stored in the database.
 
 Example request:
 
 ```
-GET /api/orders/
+curl http://127.0.0.1:8000/api/orders/
 ```
 
 Example response:
@@ -130,169 +128,248 @@ Example response:
 ```json
 [
   {
-    "order_id": "489596",
-    "customer_id": "123",
-    "order_date": "2024-05-10",
-    "total_amount": 120.50
+    "invoice_no": "1",
+    "customer_id": "1",
+    "country": "United Kingdom",
+    "invoice_date": "2026-03-13T18:27:52.129000Z",
+    "order_status": "Pending",
+    "total_items_count": 2,
+    "total_value": 2,
+    "items": [
+      {
+        "id": 3836,
+        "stock_code": "1",
+        "description": "1",
+        "quantity": 2,
+        "price": "1.00",
+        "line_total": 2
+      }
+    ]
   }
 ]
 ```
 
 ---
 
-## 2. Get a Specific Order
+# CRUD Operations
+
+## 2. Create a New Order
+
+Creates a new order.
 
 ```
-GET /api/orders/<order_id>/
+POST /api/orders/
 ```
 
-Returns details for a specific order.
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/orders/ \
+-H "Content-Type: application/json" \
+-d '{
+  "invoice_no": "999999",
+  "customer_id": "12345",
+  "country": "United Kingdom",
+  "order_status": "Pending"
+}'
+```
+
+Response:
+
+```
+201 CREATED
+```
+
+---
+
+## 3. Get a Specific Order
+
+Returns details for a single order.
+
+```
+GET /api/orders/<invoice_no>/
+```
 
 Example request:
 
 ```
-GET /api/orders/489596/
+GET /api/orders/489597/
 ```
 
 Example response:
 
 ```json
 {
-  "order_id": "489596",
-  "customer_id": "123",
-  "order_date": "2024-05-10",
-  "total_amount": 120.50
+  "invoice_no": "489597",
+  "customer_id": "Guest",
+  "country": "United Kingdom",
+  "invoice_date": "2009-12-01T14:28:00Z",
+  "order_status": "Pending",
+  "total_items_count": 25,
+  "total_value": 120.75,
+  "items": [
+    {
+      "id": 1795,
+      "stock_code": "17012A",
+      "description": "ORIGAMI VANILLA INCENSE/CANDLE SET",
+      "quantity": 1,
+      "price": "5.17",
+      "line_total": 5.17
+    }
+  ]
 }
 ```
 
 ---
 
-## 3. Get Orders by Customer
+## 4. Update an Order
+
+Partially updates an order.
+
+```
+PATCH /api/orders/<invoice_no>/
+```
+
+Example request:
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/orders/489597/ \
+-H "Content-Type: application/json" \
+-d '{"order_status":"Ready for Collection"}'
+```
+
+---
+
+## 5. Delete an Order
+
+Deletes an order.
+
+```
+DELETE /api/orders/<invoice_no>/
+```
+
+Example request:
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/api/orders/489597/
+```
+
+Response:
+
+```
+204 NO CONTENT
+```
+
+---
+
+# Filtering Endpoints
+
+## 6. Get Orders by Customer
+
+Returns all orders associated with a specific customer ID.
 
 ```
 GET /api/customers/<customer_id>/orders/
 ```
 
-Returns all orders belonging to a specific customer.
-
-Example request:
+Example:
 
 ```
-GET /api/customers/123/orders/
-```
-
-Example response:
-
-```json
-[
-  {
-    "order_id": "489596",
-    "customer_id": "123",
-    "order_date": "2024-05-10",
-    "total_amount": 120.50
-  }
-]
+GET /api/customers/17850/orders/
 ```
 
 ---
 
-## 4. Get Large Orders
+## 7. Get Large Orders
+
+Returns orders that contain a large number of items.
+
+Default threshold = **20 items**.
 
 ```
-GET /api/orders/large/
+GET /api/orders/large/?threshold=<number>
 ```
 
-Returns orders where the order value exceeds a predefined threshold.
-
-Example request:
+Example:
 
 ```
-GET /api/orders/large/
-```
-
-Example response:
-
-```json
-[
-  {
-    "order_id": "489600",
-    "customer_id": "245",
-    "order_date": "2024-05-12",
-    "total_amount": 820.75
-  }
-]
+GET /api/orders/large/?threshold=50
 ```
 
 ---
 
-## 5. Get Orders by Date
-
-```
-GET /api/orders/date/<date>/
-```
+## 8. Get Orders by Date
 
 Returns all orders placed on a specific date.
 
-Example request:
+```
+GET /api/orders/date/<YYYY-MM-DD>/
+```
+
+Example:
 
 ```
-GET /api/orders/date/2024-02-10/
+GET /api/orders/date/2010-12-01/
+```
+
+---
+
+# Analytics Endpoints
+
+## 9. Order Analytics Summary
+
+Returns aggregated statistics about orders.
+
+```
+GET /api/orders/analytics/summary/
 ```
 
 Example response:
 
 ```json
-[
-  {
-    "order_id": "489580",
-    "customer_id": "121",
-    "order_date": "2024-02-10",
-    "total_amount": 210.00
+{
+  "metrics": {
+    "total_orders_tracked": 541,
+    "physical_items_in_stockroom": 2300
+  },
+  "status_breakdown": {
+    "Pending": 120,
+    "Ready for Collection": 200,
+    "Completed": 221
   }
-]
+}
 ```
 
 ---
 
-## 6. Order Analytics Summary
+## 10. Advanced Analytics
 
-```
-GET /api/orders/analytics/summary/
-```
-
-Returns aggregated analytics data for orders, such as totals and counts.
-
-Example request:
-
-```
-GET /api/orders/analytics/summary/
-```
-
----
-
-## 7. Advanced Order Analytics
+Performs advanced database analytics including revenue calculations and best-selling products.
 
 ```
 GET /api/orders/analytics/advanced/
 ```
 
-Provides more detailed analytics about order behaviour.
+Example response:
 
-Example request:
-
+```json
+{
+  "total_revenue": 153204.75,
+  "top_5_products": [
+    {
+      "stock_code": "85123A",
+      "description": "WHITE HANGING HEART T-LIGHT HOLDER",
+      "total_sold": 2300
+    }
+  ],
+  "country_distribution": [
+    {
+      "country": "United Kingdom",
+      "order_count": 400
+    }
+  ]
+}
 ```
-GET /api/orders/analytics/advanced/
-```
-
----
-
-# Root Dashboard
-
-```
-GET /
-```
-
-Returns the API dashboard or homepage.
 
 # Error Handling
 
@@ -301,6 +378,7 @@ The API uses standard HTTP status codes.
 | Status Code | Meaning               |
 | ----------- | --------------------- |
 | 200         | Successful request    |
+| 200         | Created               |
 | 400         | Bad request           |
 | 404         | Resource not found    |
 | 500         | Internal server error |
