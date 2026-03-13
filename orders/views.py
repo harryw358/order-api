@@ -2,9 +2,9 @@ from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Order
+from .models import Order, OrderItem
 from .serializers import OrderSerializer
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, F
 from datetime import datetime
 
 # Create your views here.
@@ -28,7 +28,7 @@ def order_list(request):
 @api_view(['GET', 'PATCH', 'DELETE'])
 def order_detail(request, pk):
     try:
-        order = Order.objects.get(pk=pk)
+        order = Order.objects.get(invoice_no=pk)
     except Order.DoesNotExist:
         return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -50,31 +50,49 @@ def order_detail(request, pk):
 
 @api_view(['GET'])
 def order_analytics(request):
-    # Returns an analytics summary of store operations for management.
-
-    # 1. Total orders in the system.
+    """Updated basic analytics for the new schema."""
     total_orders = Order.objects.count()
-
-    # 2. Breakdown by order status.
     status_counts = Order.objects.values('order_status').annotate(count=Count('order_status'))
-    # Data formatting.
     status_breakdown = {item['order_status']: item['count'] for item in status_counts}
 
-    # 3. Total items sitting in the store.
-    items_in_store = Order.objects.filter(
-        order_status__in=['Pending', 'Ready for Collection']
-    ).aggregate(total_items=Sum('total_items'))['total_items'] or 0
+    # FIX: Calculate items by looking across the ForeignKey relationship to OrderItem
+    items_in_store = OrderItem.objects.filter(
+        order__order_status__in=['Pending', 'Ready for Collection']
+    ).aggregate(total_physical_items=Sum('quantity'))['total_physical_items'] or 0
 
-    # Final custom JSON response.
-    analytics_data = {
+    return Response({
         "metrics": {
             "total_orders_tracked": total_orders,
             "physical_items_in_stockroom": items_in_store
         },
         "status_breakdown": status_breakdown
-    }
+    })
 
-    return Response(analytics_data)
+@api_view(['GET'])
+def advanced_analytics(request):
+    """
+    High-level database aggregation demonstrating advanced SQL/ORM queries.
+    """
+    # 1. Total Revenue across the entire store (Quantity * Price for all items)
+    total_revenue = OrderItem.objects.aggregate(
+        revenue=Sum(F('quantity') * F('price'))
+    )['revenue'] or 0
+
+    # 2. Top 5 Best-Selling Products
+    top_products = OrderItem.objects.values('stock_code', 'description').annotate(
+        total_sold=Sum('quantity')
+    ).order_by('-total_sold')[:5]
+
+    # 3. Orders by Country Distribution
+    country_breakdown = Order.objects.values('country').annotate(
+        order_count=Count('invoice_no')
+    ).order_by('-order_count')
+
+    return Response({
+        "total_revenue": round(total_revenue, 2),
+        "top_5_products": list(top_products),
+        "country_distribution": list(country_breakdown)
+    })
 
 @api_view(['GET'])
 def customer_orders(request, customer_id):

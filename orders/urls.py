@@ -8,12 +8,13 @@ urlpatterns = [
     # 1. Collection endpoint
     path('api/orders/', views.order_list, name='order-list'),
     
-    # 2. Analytics & Custom Filters
+    # 2. Analytics & Custom Filters (MUST be before the <str:pk> detail route)
     path('api/orders/analytics/summary/', views.order_analytics, name='order-analytics'),
+    path('api/orders/analytics/advanced/', views.advanced_analytics, name='advanced-analytics'), # Added the new advanced endpoint
     path('api/orders/large/', views.large_orders, name='large-orders'),
     path('api/orders/date/<str:date_str>/', views.orders_by_date, name='orders-by-date'),
     path('api/customers/<str:customer_id>/orders/', views.customer_orders, name='customer-orders'),
     
-    # 3. Detail endpoint
+    # 3. Detail endpoint (Matches any string, so it goes last)
     path('api/orders/<str:pk>/', views.order_detail, name='order-detail'),
 ]
