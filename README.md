@@ -75,6 +75,18 @@ source venv/bin/activate
 
 ---
 
+## 2.1. Install requirements
+
+```
+pip install Django>
+pip install djangorestframework
+pip install pandas
+pip install django-cors-headers
+pip install drf-spectacular
+```
+
+---
+
 If the database already exists, steps 3 and 4 can be skipped. In the event there are changes to the root source data or changes are made to the relational model, they must be repeated.
 
 ## 3. Import online orders
