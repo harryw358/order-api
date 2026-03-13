@@ -78,7 +78,7 @@ source venv/bin/activate
 ## 2.1. Install requirements
 
 ```
-pip install Django>
+pip install Django
 pip install djangorestframework
 pip install pandas
 pip install django-cors-headers
