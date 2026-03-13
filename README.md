@@ -377,8 +377,7 @@ The API uses standard HTTP status codes.
 
 | Status Code | Meaning               |
 | ----------- | --------------------- |
-| 200         | Successful request    |
-| 200         | Created               |
+| 200/201     | Successful request    |
 | 400         | Bad request           |
 | 404         | Resource not found    |
 | 500         | Internal server error |
