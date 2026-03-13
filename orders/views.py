@@ -384,4 +384,17 @@ def orders_by_date(request, date_str):
 
 def dashboard(request):
     return render(request, 'orders/index.html')
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def locked_test_endpoint(request):
+    return Response({
+        "message": "Success!",
+        "user": request.user.username,
+        "auth_type": "You passed the security check."
+    })
     

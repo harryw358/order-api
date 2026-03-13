@@ -19,4 +19,7 @@ urlpatterns = [
     
     # 3. Detail endpoint (Matches any string, so it goes last)
     path('api/orders/<str:pk>/', views.order_detail, name='order-detail'),
+
+    # 4. Example locked endpoint
+    path('api/test-lock/', views.locked_test_endpoint, name='test-lock'),
 ]
